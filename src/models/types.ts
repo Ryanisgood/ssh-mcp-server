@@ -21,6 +21,9 @@ export interface SSHConfig {
   shellReadyTimeoutMs?: number; // Shell readiness probe timeout, default: 10000ms
   shellCommandTimeoutMs?: number; // Shell command timeout override, default: 30000ms
   commandTemplate?: string; // Command template, use <quotedCommand> for shell arguments or <command> for raw insertion
+  renewalPrice?: string; // Optional VPS renewal price, e.g. "35 CNY" or "5.99 USD"
+  expiresAt?: string; // Optional VPS expiration date, preferably YYYY-MM-DD
+  billingCycle?: string; // Optional VPS billing cycle, e.g. monthly, quarterly, yearly, one-time
 }
 
 /**

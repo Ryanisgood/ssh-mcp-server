@@ -457,6 +457,12 @@ When the MCP server is started with `--config-file`, agents can manage the SSH i
 
 These tools preserve the existing JSON shape (array stays array, object stays object). Tool responses redact `password`, `privateKey`, and `passphrase`.
 
+Inventory entries can also store optional VPS billing metadata:
+
+- `renewalPrice`: renewal price, such as `35 CNY` or `5.99 USD`
+- `expiresAt`: expiration date, preferably `YYYY-MM-DD`
+- `billingCycle`: billing cycle, such as `monthly`, `quarterly`, `yearly`, or `one-time`
+
 Example runtime upsert:
 
 ```json
@@ -467,7 +473,10 @@ Example runtime upsert:
     "host": "203.0.113.10",
     "port": 22,
     "username": "root",
-    "password": "your_password"
+    "password": "your_password",
+    "renewalPrice": "35 CNY",
+    "expiresAt": "2026-12-31",
+    "billingCycle": "yearly"
   }
 }
 ```

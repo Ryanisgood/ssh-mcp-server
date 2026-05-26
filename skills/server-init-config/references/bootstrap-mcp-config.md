@@ -10,6 +10,7 @@ Use this when the user already provided the bootstrap connection fields: name, h
 4. Preserve existing SSH entries and unrelated MCP config fields.
 5. After `upsert-server`, re-run `list-servers`.
 6. If manual JSON editing was unavoidable, call `reload-config`; only if that tool is unavailable or returns `CONFIG_FILE_REQUIRED`, tell the user to restart or reload Codex/MCP, then verify with `list-servers` before remote probing.
+7. After the VPS initialization flow is complete and the final MCP connection has been verified, ask in Chinese whether to add optional VPS billing metadata to the same inventory entry: renewal price, expiration date, and billing cycle.
 
 For this workspace the ssh-mcp-server entry uses:
 
@@ -30,6 +31,24 @@ Preferred MCP tool call:
     "port": 22,
     "username": "root",
     "password": "用户提供的密码"
+  }
+}
+```
+
+Optional billing metadata can be included during the same upsert, or added after final verification:
+
+```json
+{
+  "tool": "upsert-server",
+  "params": {
+    "name": "连接名称",
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "root",
+    "password": "用户提供的密码",
+    "renewalPrice": "35 CNY",
+    "expiresAt": "2026-12-31",
+    "billingCycle": "yearly"
   }
 }
 ```
@@ -67,3 +86,5 @@ For array format, write the name inside the object:
 - Do not run VPS initialization until `list-servers` shows the intended bootstrap entry.
 - Prefer `upsert-server` and `reload-config` over manual file edits because they update the already-running MCP server.
 - Record whether restart/reload was required.
+- Do not invent billing metadata. Ask the user after configuration completes: “是否需要把这台 VPS 的续费价格、到期时间和付费周期写入 inventory？”
+- When adding billing metadata after final verification, preserve the existing host, port, username, and authentication fields in the `upsert-server` call.

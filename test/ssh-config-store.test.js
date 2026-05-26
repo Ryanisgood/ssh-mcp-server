@@ -47,17 +47,26 @@ describe('SSH config store', () => {
       username: 'zheng',
       password: 'new-secret',
       transportMode: 'shell',
+      renewalPrice: '12 USD',
+      expiresAt: '2026-12-31',
+      billingCycle: 'yearly',
     });
 
     assert.strictEqual(result.format, 'object');
     assert.deepStrictEqual(Object.keys(result.configs).sort(), ['existing', 'new-vps']);
     assert.strictEqual(result.configs['new-vps'].port, 2222);
     assert.strictEqual(result.configs['new-vps'].transportMode, 'shell');
+    assert.strictEqual(result.configs['new-vps'].renewalPrice, '12 USD');
+    assert.strictEqual(result.configs['new-vps'].expiresAt, '2026-12-31');
+    assert.strictEqual(result.configs['new-vps'].billingCycle, 'yearly');
 
     const stored = readJson(configPath);
     assert.strictEqual(stored.existing.password, 'old-secret');
     assert.strictEqual(stored['new-vps'].username, 'zheng');
     assert.strictEqual(stored['new-vps'].password, 'new-secret');
+    assert.strictEqual(stored['new-vps'].renewalPrice, '12 USD');
+    assert.strictEqual(stored['new-vps'].expiresAt, '2026-12-31');
+    assert.strictEqual(stored['new-vps'].billingCycle, 'yearly');
     assert.strictEqual(stored['new-vps'].name, undefined);
   });
 

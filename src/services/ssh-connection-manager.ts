@@ -617,6 +617,9 @@ export class SSHConnectionManager {
     port: number;
     username: string;
     connected: boolean;
+    renewalPrice?: string;
+    expiresAt?: string;
+    billingCycle?: string;
     status?: ServerStatus;
   }> {
     return Object.keys(this.configs).map((key) => {
@@ -628,6 +631,9 @@ export class SSHConnectionManager {
         port: config.port,
         username: config.username,
         connected: this.connected.get(key) === true,
+        renewalPrice: config.renewalPrice,
+        expiresAt: config.expiresAt,
+        billingCycle: config.billingCycle,
         status: status,
       };
     });

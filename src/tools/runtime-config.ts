@@ -37,6 +37,9 @@ const runtimeConfigSchema = {
   commandBlacklist: z.array(z.string()).optional().describe("Blocked command regexes"),
   allowedLocalPaths: z.array(z.string()).optional().describe("Allowed local paths"),
   allowedRemotePaths: z.array(z.string()).optional().describe("Allowed remote paths"),
+  renewalPrice: z.string().optional().describe("Optional VPS renewal price, e.g. 35 CNY or 5.99 USD"),
+  expiresAt: z.string().optional().describe("Optional VPS expiration date, preferably YYYY-MM-DD"),
+  billingCycle: z.string().optional().describe("Optional VPS billing cycle, e.g. monthly, quarterly, yearly, one-time"),
 };
 
 function requireConfigFile(context?: RuntimeConfigToolContext): string {

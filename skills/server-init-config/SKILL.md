@@ -26,6 +26,7 @@ This skill is for an AI agent operating through `ssh-mcp-server`. It is not a hu
 10. For `zheng` mode, add a parallel temporary MCP entry only after `ssh-prepare.sh`; do not replace, switch, or delete the bootstrap MCP entry until the temporary entry proves `whoami` and sudo.
 11. Verify through MCP before SSH lockdown, final MCP config switch, or deleting remote scripts.
 12. Delete remote deployment scripts only after final MCP verification works.
+13. After final VPS initialization and MCP verification, ask in Chinese whether the user wants to record VPS inventory billing metadata: renewal price, expiration date, and billing cycle. If they provide values, update the same server entry with `upsert-server`; preserve all existing connection fields.
 
 ## Mandatory Rules
 
@@ -52,6 +53,8 @@ This skill is for an AI agent operating through `ssh-mcp-server`. It is not a hu
 - In `zheng` mode, adding a parallel temporary MCP entry is allowed only for verification. Replacing, switching default to, or removing the bootstrap MCP entry is forbidden until final post-lockdown MCP verification passes.
 - Do not run `scripts/features/ssh-lockdown.sh` unless `FINALIZE_SSH_LOCKDOWN=1` and MCP proof has succeeded.
 - Do not remove remote deployment scripts until final verification succeeds.
+- 初始化和最终 MCP 验证完成后，必须用中文询问用户是否需要把 VPS 续费价格、到期时间、付费周期写入 inventory。用户同意并提供信息时，使用 `upsert-server` 更新当前服务器条目；不要删除或覆盖已有连接认证字段。
+- VPS 账务字段使用 `renewalPrice`, `expiresAt`, `billingCycle`。`expiresAt` 优先记录为 `YYYY-MM-DD`，`billingCycle` 可记录为 `monthly`, `quarterly`, `yearly`, `one-time` 或用户原文。
 
 ## References
 

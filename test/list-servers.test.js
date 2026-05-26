@@ -15,6 +15,9 @@ describe('List Servers Tool', () => {
         port: 22,
         username: 'root',
         connected: true,
+        renewalPrice: '6 USD',
+        expiresAt: '2026-12-31',
+        billingCycle: 'yearly',
         status: {
           reachable: true,
           hostname: 'dev-box',
@@ -26,6 +29,9 @@ describe('List Servers Tool', () => {
 
     assert.match(output, /Configured SSH servers:/);
     assert.match(output, /\[connected\] dev \| root@192.168.1.100:22/);
+    assert.match(output, /renewalPrice=6 USD/);
+    assert.match(output, /expiresAt=2026-12-31/);
+    assert.match(output, /billingCycle=yearly/);
     assert.match(output, /hostname=dev-box/);
     assert.match(output, /Raw JSON:/);
     assert.match(output, /"name": "dev"/);

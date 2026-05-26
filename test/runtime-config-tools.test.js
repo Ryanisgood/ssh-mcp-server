@@ -58,6 +58,9 @@ describe('Runtime config tools', () => {
       port: 17223,
       username: 'zheng',
       password: 'super-secret',
+      renewalPrice: '35 CNY',
+      expiresAt: '2026-10-01',
+      billingCycle: 'monthly',
     });
 
     assert.strictEqual(result.isError, undefined);
@@ -65,10 +68,16 @@ describe('Runtime config tools', () => {
     assert.strictEqual(managerInfo.length, 1);
     assert.strictEqual(managerInfo[0].name, 'vmiss');
     assert.strictEqual(managerInfo[0].port, 17223);
+    assert.strictEqual(managerInfo[0].renewalPrice, '35 CNY');
+    assert.strictEqual(managerInfo[0].expiresAt, '2026-10-01');
+    assert.strictEqual(managerInfo[0].billingCycle, 'monthly');
 
     const output = textOf(result);
     assert.match(output, /Runtime SSH config updated/);
     assert.match(output, /"name": "vmiss"/);
+    assert.match(output, /renewalPrice=35 CNY/);
+    assert.match(output, /expiresAt=2026-10-01/);
+    assert.match(output, /billingCycle=monthly/);
     assert.doesNotMatch(output, /super-secret/);
     assert.match(output, /"\*\*\*"/);
   });

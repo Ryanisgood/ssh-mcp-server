@@ -18,6 +18,18 @@ export function formatServerList(servers: ServerInfo[]): string {
       parts.push(`hostname=${server.status.hostname}`);
     }
 
+    if (server.renewalPrice) {
+      parts.push(`renewalPrice=${server.renewalPrice}`);
+    }
+
+    if (server.expiresAt) {
+      parts.push(`expiresAt=${server.expiresAt}`);
+    }
+
+    if (server.billingCycle) {
+      parts.push(`billingCycle=${server.billingCycle}`);
+    }
+
     if (server.status?.osName) {
       parts.push(`os=${server.status.osName}`);
     }

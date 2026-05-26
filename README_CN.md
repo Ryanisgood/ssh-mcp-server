@@ -453,6 +453,12 @@ JSON 配置文件中还可以通过 `shellCommandTimeoutMs` 覆盖 shell 模式�
 
 这些工具会保留原有 JSON 形态（数组仍是数组，对象仍是对象）。工具响应会脱敏 `password`、`privateKey` 和 `passphrase`。
 
+Inventory 条目也可以记录可选的 VPS 账务信息：
+
+- `renewalPrice`：续费价格，例如 `35 CNY` 或 `5.99 USD`
+- `expiresAt`：到期时间，建议使用 `YYYY-MM-DD`
+- `billingCycle`：付费周期，例如 `monthly`、`quarterly`、`yearly` 或 `one-time`
+
 运行时新增连接示例：
 
 ```json
@@ -463,7 +469,10 @@ JSON 配置文件中还可以通过 `shellCommandTimeoutMs` 覆盖 shell 模式�
     "host": "203.0.113.10",
     "port": 22,
     "username": "root",
-    "password": "your_password"
+    "password": "your_password",
+    "renewalPrice": "35 CNY",
+    "expiresAt": "2026-12-31",
+    "billingCycle": "yearly"
   }
 }
 ```

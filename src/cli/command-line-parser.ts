@@ -376,7 +376,18 @@ export class CommandLineParser {
               .filter(Boolean)
           : undefined,
       commandTemplate: this.parseCommandTemplate(config.commandTemplate),
+      renewalPrice: this.parseOptionalString(config.renewalPrice),
+      expiresAt: this.parseOptionalString(config.expiresAt),
+      billingCycle: this.parseOptionalString(config.billingCycle),
     };
+  }
+
+  private static parseOptionalString(value: unknown): string | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    const text = String(value).trim();
+    return text ? text : undefined;
   }
 
   private static parseCommandTemplate(
