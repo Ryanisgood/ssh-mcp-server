@@ -4,6 +4,8 @@ Use when OS is Debian or Ubuntu.
 
 Run `scripts/flows/debian-standard.sh` first. It handles `apt-get update`, non-interactive required tool installation, and Debian/Ubuntu service assumptions. Then run selected feature scripts.
 
+Do not run `apt-get upgrade` by default during initialization. Use `APT_RUN_UPGRADE=1` only when the user explicitly asks for package upgrades and the task can tolerate longer package-manager work.
+
 Normal ordering:
 
 1. update.

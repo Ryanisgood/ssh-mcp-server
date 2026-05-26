@@ -48,7 +48,12 @@ run_with_timeout() {
 apt_update() {
   export DEBIAN_FRONTEND=noninteractive
   run_with_timeout 300 apt-get update -qq
-  run_with_timeout 600 apt-get upgrade -y -qq || true
+  if [ "${APT_RUN_UPGRADE:-0}" = "1" ]; then
+    run_with_timeout 600 apt-get \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold \
+      upgrade -y -qq || true
+  fi
 }
 
 apt_install_required() {

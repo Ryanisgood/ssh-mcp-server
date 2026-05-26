@@ -310,7 +310,8 @@ describe('server-init-config skill', () => {
 
     assert.match(packagesText, /run_with_timeout\(\)/);
     assert.match(packagesText, /run_with_timeout 300 apt-get update/);
-    assert.match(packagesText, /run_with_timeout 600 apt-get upgrade/);
+    assert.doesNotMatch(packagesText, /apt-get upgrade/);
+    assert.match(packagesText, /APT_RUN_UPGRADE:-0/);
     assert.match(packagesText, /run_with_timeout 300 apt-get install/);
     assert.match(packagesText, /run_with_timeout 300 apk update/);
     assert.match(packagesText, /run_with_timeout 600 apk upgrade/);
@@ -394,6 +395,25 @@ describe('server-init-config skill', () => {
     assert.match(scriptText, /require_domain_hostname\(\)/);
     assert.match(scriptText, /error=reality_server_name_must_be_domain/);
     assert.match(scriptText, /error=reality_server_name_must_not_be_ip/);
+    assert.match(scriptText, /\*\[!A-Za-z0-9\.-\]\*/);
+    assert.doesNotMatch(scriptText, /\[\^A-Za-z0-9\.-\]/);
+  });
+
+  it('requires verified Xray installer and parses Xray v26 key output', () => {
+    const scriptText = fs.readFileSync(path.join(featureScriptsDir, 'proxy-vless-reality.sh'), 'utf8');
+    const referenceText = fs.readFileSync(path.join(referencesDir, 'features', 'proxy-vless-reality.md'), 'utf8');
+
+    assert.match(scriptText, /XRAY_INSTALLER_SHA256_required/);
+    assert.doesNotMatch(scriptText, /ALLOW_UNVERIFIED_REMOTE_INSTALL/);
+    assert.match(scriptText, /extract_x25519_key\(\)/);
+    assert.match(scriptText, /tolower\(\$0\) ~ \/\^private key:/);
+    assert.match(scriptText, /tolower\(\$0\) ~ \/\^public key:/);
+    assert.match(scriptText, /error=xray_public_key_empty/);
+    assert.match(referenceText, /XRAY_INSTALLER_SHA256/);
+    assert.match(referenceText, /Do not run an unverified remote installer/);
+    assert.match(referenceText, /Pin the installer hash before execution/);
+    assert.match(referenceText, /record the hash in task tracking/i);
+    assert.match(referenceText, /XRAY_INSTALLER_SHA256=/);
   });
 
   it('gates SSH lockdown before any sshd mutation', () => {

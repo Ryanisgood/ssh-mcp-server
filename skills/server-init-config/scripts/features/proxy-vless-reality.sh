@@ -5,7 +5,6 @@ VLESS_PORT="${VLESS_PORT:-443}"
 REALITY_SERVER_NAME="${REALITY_SERVER_NAME:-www.cloudflare.com}"
 REALITY_DEST_PORT="${REALITY_DEST_PORT:-443}"
 XRAY_INSTALLER_SHA256="${XRAY_INSTALLER_SHA256:-}"
-ALLOW_UNVERIFIED_REMOTE_INSTALL="${ALLOW_UNVERIFIED_REMOTE_INSTALL:-0}"
 
 run_with_timeout() {
   seconds="$1"
@@ -62,7 +61,7 @@ validate_port() {
 validate_hostname() {
   host="$1"
   case "$host" in
-    ''|*[^A-Za-z0-9.-]*|.*|*.)
+    ''|*[!A-Za-z0-9.-]*|.*|*.)
       echo "error=invalid_reality_server_name:$host"
       exit 1
       ;;
@@ -124,10 +123,28 @@ verify_remote_installer() {
     }
     return 0
   fi
-  [ "$ALLOW_UNVERIFIED_REMOTE_INSTALL" = "1" ] || {
-    echo "error=XRAY_INSTALLER_SHA256_required set ALLOW_UNVERIFIED_REMOTE_INSTALL=1 to run unverified installer"
-    exit 1
-  }
+  echo "error=XRAY_INSTALLER_SHA256_required"
+  exit 1
+}
+
+extract_x25519_key() {
+  label="$1"
+  awk -v label="$label" '
+    BEGIN { wanted = tolower(label) }
+    {
+      line = $0
+      if (wanted == "private" && tolower($0) ~ /^private key:/) {
+        sub(/^[^:]*:[[:space:]]*/, "", line)
+        print line
+        exit
+      }
+      if (wanted == "public" && tolower($0) ~ /^public key:/) {
+        sub(/^[^:]*:[[:space:]]*/, "", line)
+        print line
+        exit
+      }
+    }
+  '
 }
 
 backup_file() {
@@ -177,8 +194,16 @@ run_with_timeout 180 bash "$installer" install
 mkdir -p /usr/local/etc/xray
 
 uuid="$(cat /proc/sys/kernel/random/uuid)"
-private_key="$(xray x25519 2>/dev/null | awk -F': ' '/Private key/ {print $2}')"
-public_key="$(xray x25519 -i "$private_key" 2>/dev/null | awk -F': ' '/Public key/ {print $2}')"
+private_key="$(xray x25519 2>/dev/null | extract_x25519_key private)"
+[ -n "$private_key" ] || {
+  echo "error=xray_private_key_empty"
+  exit 1
+}
+public_key="$(xray x25519 -i "$private_key" 2>/dev/null | extract_x25519_key public)"
+[ -n "$public_key" ] || {
+  echo "error=xray_public_key_empty"
+  exit 1
+}
 short_id="$(openssl rand -hex 8)"
 
 backup_file /usr/local/etc/xray/config.json
