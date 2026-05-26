@@ -17,4 +17,6 @@ Pin the installer hash before execution:
 3. Record the hash in task tracking evidence with the source URL and fetch time.
 4. Run the feature script with `XRAY_INSTALLER_SHA256=<recorded-sha256>`.
 
-Key parsing rule: parse Xray `x25519` output case-insensitively and fail if either `privateKey` or `publicKey` would be empty.
+Key parsing rule: parse Xray `x25519` output case-insensitively and fail if either `privateKey` or `publicKey` would be empty. Xray v26 may print `PrivateKey:` and `Password (PublicKey):`; the script must parse those exact labels, not only old `Private key:` / `Public key:` labels.
+
+Config permission rule: the generated Xray config contains Reality private key material. Do not make it world-readable. If the Xray systemd unit runs as a non-root user, set the config to `root:<service-group>` with mode `640`; otherwise use mode `600`.

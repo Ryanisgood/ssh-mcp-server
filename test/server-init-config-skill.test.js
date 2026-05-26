@@ -85,6 +85,13 @@ function shellFunctionBody(text, functionName) {
   return match[2];
 }
 
+function shellFunctionSource(text, functionName) {
+  const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = text.match(new RegExp(`(^|\\n)(${escaped}\\(\\) \\{[\\s\\S]*?\\n\\})`, 'm'));
+  assert.ok(match, `${functionName} function should exist`);
+  return match[2];
+}
+
 describe('server-init-config skill', () => {
   it('uses modular references and scripts instead of one monolithic init script', () => {
     assert.ok(fs.existsSync(referencesDir), 'references directory should exist');
@@ -402,13 +409,32 @@ describe('server-init-config skill', () => {
   it('requires verified Xray installer and parses Xray v26 key output', () => {
     const scriptText = fs.readFileSync(path.join(featureScriptsDir, 'proxy-vless-reality.sh'), 'utf8');
     const referenceText = fs.readFileSync(path.join(referencesDir, 'features', 'proxy-vless-reality.md'), 'utf8');
+    const extractFunction = shellFunctionSource(scriptText, 'extract_x25519_key');
+    const xrayV26Output = [
+      'PrivateKey: 4GkFeyvB874RypkiI8gPNUB3yvgCCx6YPpaa9NScMl0',
+      'Password (PublicKey): fNtFirUenHsOv0D5Pa1f9ZHa3Wb0LHAKMt3FyTa-znA',
+      'Hash32: n3NafJ1TX6xVYsD7HM0n2lLTGmWfE8tBKYn2gW1dWqw',
+      '',
+    ].join('\n');
+    const privateKey = execFileSync('sh', ['-c', `${extractFunction}\nextract_x25519_key private`], {
+      input: xrayV26Output,
+      encoding: 'utf8',
+    }).trim();
+    const publicKey = execFileSync('sh', ['-c', `${extractFunction}\nextract_x25519_key public`], {
+      input: xrayV26Output,
+      encoding: 'utf8',
+    }).trim();
 
     assert.match(scriptText, /XRAY_INSTALLER_SHA256_required/);
     assert.doesNotMatch(scriptText, /ALLOW_UNVERIFIED_REMOTE_INSTALL/);
     assert.match(scriptText, /extract_x25519_key\(\)/);
-    assert.match(scriptText, /tolower\(\$0\) ~ \/\^private key:/);
-    assert.match(scriptText, /tolower\(\$0\) ~ \/\^public key:/);
+    assert.strictEqual(privateKey, '4GkFeyvB874RypkiI8gPNUB3yvgCCx6YPpaa9NScMl0');
+    assert.strictEqual(publicKey, 'fNtFirUenHsOv0D5Pa1f9ZHa3Wb0LHAKMt3FyTa-znA');
+    assert.match(scriptText, /privatekey:/);
+    assert.match(scriptText, /password\\\(publickey\\\)/);
     assert.match(scriptText, /error=xray_public_key_empty/);
+    assert.match(scriptText, /set_xray_config_permissions\(\)/);
+    assert.match(scriptText, /chmod 640 "\$file"/);
     assert.match(referenceText, /XRAY_INSTALLER_SHA256/);
     assert.match(referenceText, /Do not run an unverified remote installer/);
     assert.match(referenceText, /Pin the installer hash before execution/);

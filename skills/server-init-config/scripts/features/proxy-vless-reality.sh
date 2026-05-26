@@ -133,18 +133,34 @@ extract_x25519_key() {
     BEGIN { wanted = tolower(label) }
     {
       line = $0
-      if (wanted == "private" && tolower($0) ~ /^private key:/) {
+      normalized = tolower($0)
+      gsub(/[[:space:]]+/, "", normalized)
+      if (wanted == "private" && normalized ~ /^privatekey:/) {
         sub(/^[^:]*:[[:space:]]*/, "", line)
         print line
         exit
       }
-      if (wanted == "public" && tolower($0) ~ /^public key:/) {
+      if (wanted == "public" && normalized ~ /^(publickey|password\(publickey\)):/) {
         sub(/^[^:]*:[[:space:]]*/, "", line)
         print line
         exit
       }
     }
   '
+}
+
+set_xray_config_permissions() {
+  file="$1"
+  if command -v systemctl >/dev/null 2>&1 && systemctl cat xray >/dev/null 2>&1; then
+    user="$(systemctl cat xray | awk -F= 'tolower($1) == "user" {print $2; exit}')"
+    if [ -n "${user:-}" ] && id "$user" >/dev/null 2>&1; then
+      group="$(id -gn "$user")"
+      chown "root:$group" "$file"
+      chmod 640 "$file"
+      return 0
+    fi
+  fi
+  chmod 600 "$file"
 }
 
 backup_file() {
@@ -233,6 +249,7 @@ cat >/usr/local/etc/xray/config.json <<EOF
   "outbounds": [{ "protocol": "freedom" }]
 }
 EOF
+set_xray_config_permissions /usr/local/etc/xray/config.json
 
 start_xray_service
 
