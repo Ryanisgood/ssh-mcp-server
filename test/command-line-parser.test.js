@@ -74,6 +74,7 @@ Host testhost
       assert.strictEqual(result.configs.dev.host, '192.168.1.100');
       assert.strictEqual(result.configs.dev.username, 'devuser');
       assert.strictEqual(result.configs.prod.privateKey, path.join(os.homedir(), '.ssh', 'prod_key'));
+      assert.strictEqual(result.configFilePath, testConfigPath);
     });
 
     it('应该正确解析 JSON 配置文件（数组格式）', () => {

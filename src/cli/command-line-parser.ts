@@ -101,8 +101,11 @@ export class CommandLineParser {
     const configMap: SshConnectionConfigMap = {};
 
     // Priority 1: Load from config file if specified
-    if (values["config-file"]) {
-      const configFilePath = path.resolve(values["config-file"]);
+    const configFilePath = values["config-file"]
+      ? path.resolve(values["config-file"])
+      : undefined;
+
+    if (configFilePath) {
       if (!fs.existsSync(configFilePath)) {
         throw new Error(`Config file not found: ${configFilePath}`);
       }
@@ -258,6 +261,7 @@ export class CommandLineParser {
     return {
       configs: configMap,
       preConnect: values["pre-connect"] === true,
+      configFilePath,
     };
   }
 
@@ -295,7 +299,7 @@ export class CommandLineParser {
    * Normalize SSH config object to ensure proper types and structure
    * @private
    */
-  private static normalizeConfig(config: any): SSHConfig {
+  public static normalizeConfig(config: any): SSHConfig {
     const port = typeof config.port === "number"
       ? config.port
       : parseInt(config.port, 10);

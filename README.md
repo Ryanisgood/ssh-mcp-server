@@ -44,20 +44,27 @@ NPM: [https://www.npmjs.com/package/@fangjunjie/ssh-mcp-server](https://www.npmj
 | upload | File Upload Tool | Upload local files to specified locations on remote servers |
 | download | File Download Tool | Download files from remote servers to local specified locations |
 | list-servers | List Servers Tool | List all available SSH server configurations |
+| reload-config | Runtime Config Tool | Reload the `--config-file` SSH inventory without restarting the MCP server |
+| upsert-server | Runtime Config Tool | Add or update one SSH server in the `--config-file` inventory and refresh runtime configs |
+| remove-server | Runtime Config Tool | Remove one SSH server from the `--config-file` inventory and refresh runtime configs |
 
 ## 📚 Usage
 
 ### 0. 🤖 Quick Setup via AI Skill (Recommended)
 
-If you are using an AI coding assistant that supports skills (such as Claude Code), you can use the built-in **ssh-mcp-helper** skill to complete the installation and configuration interactively — no need to manually edit JSON files.
+If you are using an AI coding assistant that supports skills (such as Claude Code or Codex), this repository includes two skills:
+
+- **ssh-mcp-helper**: configure ssh-mcp-server in your MCP client.
+- **server-init-config**: let an agent initialize a fresh Debian, Ubuntu, or Alpine VPS through ssh-mcp-server by probing OS and effective memory first, asking branch-specific policy questions, and running only the chosen optional features.
 
 **How to use:**
 
 1. Install the skill from this repository's `skills/` directory
-2. Tell your AI assistant: "Help me set up ssh-mcp-server" or "Configure SSH MCP for my remote server"
-3. The skill will guide you step by step: check Node.js environment → choose MCP client → select authentication method → collect connection parameters → generate and write configuration
+2. Tell your AI assistant: "Help me set up ssh-mcp-server" or "Configure SSH MCP for my remote server" for MCP configuration
+3. Tell your AI assistant: "Use server-init-config to initialize this VPS" after the SSH MCP connection works
+4. The skills guide the agent through the required checks and generate correctly formatted configuration or remote bootstrap commands
 
-The skill supports all scenarios covered below (password, private key, SSH config reuse, SOCKS proxy, bastion hosts, multi-connection, 2FA, command restrictions, etc.) and automatically produces correctly formatted configuration.
+The helper skill supports all connection scenarios covered below (password, private key, SSH config reuse, SOCKS proxy, bastion hosts, multi-connection, 2FA, command restrictions, etc.). The server init skill is agent-oriented and uses modular OS flows plus optional feature scripts, so the agent uploads only the pieces needed for the detected host.
 
 ---
 
@@ -442,6 +449,29 @@ Then use the `--config-file` parameter:
 }
 ```
 
+When the MCP server is started with `--config-file`, agents can manage the SSH inventory at runtime without restarting the MCP server:
+
+- `upsert-server`: add or update one named connection in the JSON config file, then reload runtime configs.
+- `remove-server`: remove one named connection from the JSON config file, then reload runtime configs.
+- `reload-config`: re-read the JSON config file from disk and replace the in-memory connection list.
+
+These tools preserve the existing JSON shape (array stays array, object stays object). Tool responses redact `password`, `privateKey`, and `passphrase`.
+
+Example runtime upsert:
+
+```json
+{
+  "tool": "upsert-server",
+  "params": {
+    "name": "new-vps",
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "root",
+    "password": "your_password"
+  }
+}
+```
+
 #### 🔧 Method 2: Using JSON Format with --ssh Parameter
 
 You can pass JSON-formatted configuration strings directly:
@@ -533,6 +563,8 @@ Example response:
   { "name": "prod", "host": "5.6.7.8", "port": 22, "username": "bob" }
 ]
 ```
+
+If the server is started with `--config-file`, use `upsert-server`, `remove-server`, or `reload-config` to change this list without restarting the MCP process. If it was started with inline `--ssh` or single-connection flags, runtime config tools return `CONFIG_FILE_REQUIRED`.
 
 ### ⚙️ Command Line Options Reference
 

@@ -38,20 +38,27 @@ NPM: [https://www.npmjs.com/package/@fangjunjie/ssh-mcp-server](https://www.npmj
 | upload | 文件上传工具 | 将本地文件上传到远程服务器指定位置 |
 | download | 文件下载工具 | 从远程服务器下载文件到本地指定位置 |
 | list-servers | 服务器列表工具 | 列出所有可用SSH服务器配置 |
+| reload-config | 运行时配置工具 | 不重启 MCP server，重新加载 `--config-file` SSH inventory |
+| upsert-server | 运行时配置工具 | 在 `--config-file` inventory 中新增或更新一个 SSH 连接，并刷新运行时配置 |
+| remove-server | 运行时配置工具 | 从 `--config-file` inventory 中删除一个 SSH 连接，并刷新运行时配置 |
 
 ## 📚 使用方法
 
 ### 0. 🤖 通过 AI Skill 快速配置（推荐）
 
-如果你使用支持 skill 的 AI 编程助手（如 Claude Code），可以直接使用内置的 **ssh-mcp-helper** skill 通过交互式问答完成安装和配置，无需手动编辑 JSON 文件。
+如果你使用支持 skill 的 AI 编程助手（如 Claude Code 或 Codex），本仓库内置两个 skill：
+
+- **ssh-mcp-helper**：为 MCP 客户端配置 ssh-mcp-server 连接。
+- **server-init-config**：让 agent 通过 ssh-mcp-server 初始化 Debian、Ubuntu 或 Alpine VPS：先探测系统和实际内存，再按分支询问策略，并只执行用户选择的可选功能。
 
 **使用方式：**
 
 1. 从本仓库 `skills/` 目录安装该 skill
-2. 告诉你的 AI 助手："帮我配置 ssh-mcp-server" 或 "给 Cursor 加一个 SSH MCP 连接"
-3. skill 会逐步引导你：检查 Node.js 环境 → 选择 MCP 客户端 → 选择认证方式 → 收集连接参数 → 生成并写入配置
+2. 配置 MCP 连接时，告诉 AI 助手："帮我配置 ssh-mcp-server" 或 "给 Cursor 加一个 SSH MCP 连接"
+3. SSH MCP 连通后，告诉 AI 助手："使用 server-init-config 初始化这台 VPS"
+4. skill 会引导 agent 完成必要检查，并生成格式正确的 MCP 配置或远程初始化命令
 
-该 skill 支持下文所有场景（账号密码、私钥、SSH config 复用、SOCKS 代理、堡垒机、多连接、2FA、命令限制等），并自动生成格式正确的配置。
+helper skill 支持下文所有连接场景（账号密码、私钥、SSH config 复用、SOCKS 代理、堡垒机、多连接、2FA、命令限制等）。server-init-config 是面向 agent 的技能，使用模块化系统流程和可选功能脚本，让 agent 只上传并执行当前主机需要的部分。
 
 ---
 
@@ -438,6 +445,29 @@ JSON 配置文件中还可以通过 `shellCommandTimeoutMs` 覆盖 shell 模式�
 }
 ```
 
+当 MCP server 使用 `--config-file` 启动后，agent 可以在运行时管理 SSH inventory，不需要重启 MCP server：
+
+- `upsert-server`：新增或更新一个具名连接到 JSON 配置文件，然后刷新运行时配置。
+- `remove-server`：从 JSON 配置文件删除一个具名连接，然后刷新运行时配置。
+- `reload-config`：重新读取磁盘上的 JSON 配置文件，并替换内存中的连接列表。
+
+这些工具会保留原有 JSON 形态（数组仍是数组，对象仍是对象）。工具响应会脱敏 `password`、`privateKey` 和 `passphrase`。
+
+运行时新增连接示例：
+
+```json
+{
+  "tool": "upsert-server",
+  "params": {
+    "name": "new-vps",
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "root",
+    "password": "your_password"
+  }
+}
+```
+
 #### 🔧 方式二：使用 JSON 格式的 --ssh 参数
 
 可以直接传递 JSON 格式的配置字符串：
@@ -529,6 +559,8 @@ npx @fangjunjie/ssh-mcp-server \
   { "name": "prod", "host": "5.6.7.8", "port": 22, "username": "bob" }
 ]
 ```
+
+如果 server 使用 `--config-file` 启动，可以用 `upsert-server`、`remove-server` 或 `reload-config` 直接修改这个列表，不需要重启 MCP 进程。如果使用的是内联 `--ssh` 或单连接参数启动，运行时配置工具会返回 `CONFIG_FILE_REQUIRED`。
 
 ### ⚙️ 命令行选项参考
 

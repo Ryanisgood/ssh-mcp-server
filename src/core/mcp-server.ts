@@ -24,8 +24,8 @@ export class SshMcpServer {
   /**
    * Register tools
    */
-  private registerTools(): void {
-    registerAllTools(this.server);
+  private registerTools(configFilePath?: string): void {
+    registerAllTools(this.server, { configFilePath });
   }
 
   private async shutdown(reason: string, exitCode?: number): Promise<void> {
@@ -120,7 +120,7 @@ export class SshMcpServer {
     }
 
     // Register tools
-    this.registerTools();
+    this.registerTools(parsedArgs.configFilePath);
 
     // Create transport instance and connect
     const transport = new StdioServerTransport();
