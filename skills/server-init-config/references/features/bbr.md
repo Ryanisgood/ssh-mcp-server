@@ -1,8 +1,10 @@
 # BBR
 
+Standard flows default to BBRv3 enabled. Do not ask the user whether to enable BBRv3.
+
 Run `scripts/features/bbr.sh` only in standard flows.
 
-Ordering rule: BBR and network tuning must run before proxy installation. Do not run BBR in the low-memory Alpine default flow.
+Ordering rule: BBRv3 and network tuning must run before proxy installation. Do not run BBR in the low-memory Alpine default flow.
 
 Support checks:
 

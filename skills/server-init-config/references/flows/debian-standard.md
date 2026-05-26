@@ -12,10 +12,12 @@ Normal ordering:
 4. optional SSH prepare.
 5. optional fail2ban.
 6. optional BBR.
-7. selected proxy.
-8. verify.
-9. MCP handoff.
-10. optional SSH lockdown.
-11. cleanup.
+7. optional firewall after current SSH, final SSH, and selected proxy ports are known.
+8. selected proxy.
+9. verify.
+10. MCP handoff.
+11. optional SSH lockdown.
+12. cleanup.
 
 BBR and network tuning must run before proxy installation when both are selected.
+Firewall hardening must allow the current SSH port, prepared final SSH port, and selected proxy port before enabling deny rules.

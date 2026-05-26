@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 
+# BBRv3 best-effort tuning. Kernel support is provider-dependent.
 conf="/etc/sysctl.d/99-server-init-bbr.conf"
 mkdir -p /etc/sysctl.d
 {

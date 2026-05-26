@@ -19,33 +19,36 @@ This skill is for an AI agent operating through `ssh-mcp-server`. It is not a hu
    - Alpine with `effective_memory_mb >= 256`: `references/flows/alpine-standard.md`
    - Debian/Ubuntu: `references/flows/debian-standard.md`
 5. Ask branch-specific policy questions in Chinese; use `references/policy-questions.md`.
-6. After policy selection, add exactly one login policy reference for standard Alpine, Debian, and Ubuntu flows if needed: `references/flows/root-password.md` or `references/flows/zheng-key-lockdown.md`.
-7. Add feature references only for selected options: backup, fail2ban, BBR, VLESS + Reality, or HY2.
-8. Upload and run only the scripts named by the selected flow, login policy, and features.
-9. For `zheng` mode, add a parallel temporary MCP entry only after `ssh-prepare.sh`; do not replace, switch, or delete the bootstrap MCP entry until the temporary entry proves `whoami` and sudo.
-10. Verify through MCP before SSH lockdown, final MCP config switch, or deleting remote scripts.
-11. Delete remote deployment scripts only after final MCP verification works.
+6. For standard Alpine, Debian, and Ubuntu flows, write `policy_decision_record` before choosing scripts. User-answer fields must be complete; default feature fields are `fail2ban_enabled=true`, `firewall_enabled=true`, and `bbr_enabled=true`. If any required user-answer field is missing, stop with `POLICY_INCOMPLETE_STOP`.
+7. After policy selection, add exactly one login policy reference for standard Alpine, Debian, and Ubuntu flows if needed: `references/flows/root-password.md` or `references/flows/zheng-key-lockdown.md`.
+8. Add feature references only for selected options: backup, fail2ban, firewall, BBR, VLESS + Reality, or HY2.
+9. Upload and run only the scripts named by the selected flow, login policy, and features.
+10. For `zheng` mode, add a parallel temporary MCP entry only after `ssh-prepare.sh`; do not replace, switch, or delete the bootstrap MCP entry until the temporary entry proves `whoami` and sudo.
+11. Verify through MCP before SSH lockdown, final MCP config switch, or deleting remote scripts.
+12. Delete remote deployment scripts only after final MCP verification works.
 
 ## Mandatory Rules
 
 - 所有面向用户的询问必须使用中文。
 - 当用户已经提供连接名称、host、port、username、password 时，agent 必须优先使用 `upsert-server` 自己创建或更新 bootstrap MCP 配置并验证 `list-servers`；不要要求用户手工加入 MCP 配置。
 - 不要在 OS 和 `effective_memory_mb` 探测完成前询问策略问题；必须先选定低内存 Alpine、标准 Alpine、Debian/Ubuntu 之一。
-- 低内存 Alpine 分支只询问是否执行小内存默认初始化流程，以及是否安装代理；不要询问 `zheng`、备份、修改密码、fail2ban 或 BBR。
+- 低内存 Alpine 分支只询问是否执行小内存默认初始化流程，以及是否安装代理；不要询问 `zheng`、备份、修改密码、fail2ban、防火墙加固或 BBRv3。
 - 标准 Alpine、Debian、Ubuntu 流程必须询问：是否创建 `zheng` 用户并切换 MCP 到密钥登录，还是保持 `root + password` 登录？
 - 标准 Alpine、Debian、Ubuntu 流程必须询问：是否安装代理？选项包括不安装、VLESS 默认配置、HY2 默认配置、VLESS 自定义端口、HY2 自定义端口、VLESS 详细配置。
 - 标准 Alpine、Debian、Ubuntu 流程必须询问：是否启用备份？
-- 标准 Alpine、Debian、Ubuntu 流程必须询问：是否修改固定密码？固定密码为 `212243`。
-- 标准 Alpine、Debian、Ubuntu 流程必须询问：是否启用 fail2ban？
+- 只有当用户选择创建 `zheng` 并切换密钥登录时，才询问是否修改固定密码；固定密码为 `212243`，用于 `zheng` sudo。选择 `root + password` 时不要询问修改固定密码，记录 `change_password: false`，不要修改 root 密码。
+- 标准 Alpine、Debian、Ubuntu 流程默认启用 fail2ban、ufw 防火墙加固、BBRv3；不要询问这三项，必须在 `policy_decision_record` 中写入 `fail2ban_enabled=true`, `firewall_enabled=true`, `bbr_enabled=true`。
+- 标准 Alpine、Debian、Ubuntu 流程在执行任何登录策略或功能脚本前，必须写出 `policy_decision_record`，字段必须包括 `login_mode`, `proxy_choice`, `backup_enabled`, `change_password`, `fail2ban_enabled`, `firewall_enabled`, `bbr_enabled`。缺少任意用户回答字段必须停止并标记 `POLICY_INCOMPLETE_STOP`。
+- 不要从用户的部分指令推断用户回答字段。比如用户只说“不备份，装 VLESS”时，仍缺少登录模式；如果登录模式是 `zheng_key_lockdown`，还缺少是否修改固定密码，必须继续用中文询问。
 - Every remote command must use the MCP/tool timeout. Also wrap remote shell commands with `timeout` when the remote host has it. If remote `timeout` is missing on minimal systems, keep the MCP/tool timeout active and install required tools before long-running commands.
 - If any referenced `references/...` or `scripts/...` file is missing, stop and report that the `server-init-config` skill installation is incomplete; do not improvise missing guidance or scripts.
 - Actual memory means `effective_memory_mb` from `scripts/common/probe.sh` or `scripts/common/memory.sh`; do not classify NAT or container hosts from `/proc/meminfo` alone.
 - Alpine `effective_memory_mb <256MB` 时，必须用中文询问用户是否执行默认初始化流程；小内存 Alpine 默认流程仅且仅有三步：更新系统、安装必要工具、安装代理。
 - Normal Debian/Ubuntu and standard Alpine flows 必须先更新系统并安装必要工具 before optional changes.
-- Normal flows must run BBR 调优必须在代理安装之前完成 when BBR is selected; low-memory Alpine must not run BBR.
+- Normal flows must run BBRv3 调优必须在代理安装之前完成; low-memory Alpine must not run BBRv3.
+- Default firewall hardening uses ufw. Allow the current SSH port, any prepared final SSH port, and the selected proxy port before enabling deny rules.
 - Never disable root login, password login, or the bootstrap SSH port until a parallel temporary MCP entry has proven `whoami` and `sudo -S whoami`.
 - SSH handoff safety gate: prepare must keep bootstrap root/password and the old port alive; then add a parallel temporary MCP entry for `zheng` on port `17223`; then `whoami` must return `zheng`; then `printf '212243\n' | sudo -S -p '' whoami` must return `root`; only then run `scripts/features/ssh-lockdown.sh` through sudo with `FINALIZE_SSH_LOCKDOWN=1`.
-- If root password changes in root mode, update the MCP config before reconnecting.
 - In `zheng` mode, adding a parallel temporary MCP entry is allowed only for verification. Replacing, switching default to, or removing the bootstrap MCP entry is forbidden until final post-lockdown MCP verification passes.
 - Do not run `scripts/features/ssh-lockdown.sh` unless `FINALIZE_SSH_LOCKDOWN=1` and MCP proof has succeeded.
 - Do not remove remote deployment scripts until final verification succeeds.
@@ -76,6 +79,7 @@ Feature references:
 - `references/features/backup.md`
 - `references/features/bbr.md`
 - `references/features/fail2ban.md`
+- `references/features/firewall.md`
 - `references/features/proxy-vless-reality.md`
 - `references/features/proxy-hy2.md`
 

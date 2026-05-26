@@ -192,11 +192,12 @@ describe('server-init-config skill', () => {
       { file: 'flows/alpine-low-memory.md', patterns: [/^# Alpine Low Memory Flow/m, /小内存 Alpine 默认流程仅且仅有三步/, /scripts\/flows\/alpine-low-memory\.sh/, /Forbidden by default/] },
       { file: 'flows/alpine-standard.md', patterns: [/^# Alpine Standard Flow/m, /effective_memory_mb >= 256/, /apk/, /OpenRC/] },
       { file: 'flows/debian-standard.md', patterns: [/^# Debian Standard Flow/m, /Debian or Ubuntu/, /apt-get update/, /Normal ordering/] },
-      { file: 'flows/root-password.md', patterns: [/^# Root Password Flow/m, /root \+ password/, /CHANGE_PASSWORD=1/, /212243/] },
-      { file: 'flows/zheng-key-lockdown.md', patterns: [/^# zheng Key Lockdown Flow/m, /ssh-prepare\.sh/, /ssh-lockdown\.sh/, /FINALIZE_SSH_LOCKDOWN=1/] },
+      { file: 'flows/root-password.md', patterns: [/^# Root Password Flow/m, /root \+ password/, /Do not create `zheng`/, /change_password: false/] },
+      { file: 'flows/zheng-key-lockdown.md', patterns: [/^# zheng Key Lockdown Flow/m, /ssh-prepare\.sh/, /ssh-lockdown\.sh/, /FINALIZE_SSH_LOCKDOWN=1/, /212243/] },
       { file: 'features/backup.md', patterns: [/^# Backup/m, /scripts\/features\/backup\.sh/, /enabled backup/i] },
-      { file: 'features/bbr.md', patterns: [/^# BBR/m, /scripts\/features\/bbr\.sh/, /before proxy installation/i, /low-memory Alpine/i] },
+      { file: 'features/bbr.md', patterns: [/^# BBR/m, /BBRv3/i, /scripts\/features\/bbr\.sh/, /before proxy installation/i, /low-memory Alpine/i] },
       { file: 'features/fail2ban.md', patterns: [/^# Fail2ban/m, /scripts\/features\/fail2ban\.sh/, /low-memory Alpine default flow/i] },
+      { file: 'features/firewall.md', patterns: [/^# Firewall/m, /ufw/i, /scripts\/features\/firewall\.sh/, /allow current SSH port/i, /selected proxy port/i] },
       { file: 'features/proxy-hy2.md', patterns: [/^# HY2/m, /scripts\/features\/proxy-hy2\.sh/, /HY2_PORT=443/] },
       { file: 'features/proxy-vless-reality.md', patterns: [/^# VLESS Reality/m, /scripts\/features\/proxy-vless-reality\.sh/, /VLESS_PORT=443/, /REALITY_SERVER_NAME/] },
     ];
@@ -220,9 +221,10 @@ describe('server-init-config skill', () => {
       { file: 'flows/alpine-standard.sh', patterns: [/require_root/, /apk_update/, /apk_install_required/, /flow=alpine-standard/, /next=selected-features/] },
       { file: 'flows/debian-standard.sh', patterns: [/require_root/, /apt_update/, /apt_install_required/, /flow=debian-standard/, /next=selected-features/] },
       { file: 'features/backup.sh', patterns: [/server-init-backup/, /\/etc\/ssh/, /tar -czf/, /backup=/] },
-      { file: 'features/bbr.sh', patterns: [/net\.core\.default_qdisc=fq/, /net\.ipv4\.tcp_congestion_control=bbr/, /bbr_congestion_control=/] },
+      { file: 'features/bbr.sh', patterns: [/BBRv3/i, /net\.core\.default_qdisc=fq/, /net\.ipv4\.tcp_congestion_control=bbr/, /bbr_congestion_control=/] },
       { file: 'features/cleanup.sh', patterns: [/rm\s+-rf/, /server-init/, /cleanup=/] },
       { file: 'features/fail2ban.sh', patterns: [/fail2ban/, /jail\.local/, /service_enable_now fail2ban/, /fail2ban=active|fail2ban=inactive/] },
+      { file: 'features/firewall.sh', patterns: [/ufw/, /FIREWALL_SSH_PORT/, /PROXY_PORT/, /allow current SSH port/i, /selected proxy port/i, /firewall=active|firewall=inactive/] },
       { file: 'features/proxy-hy2.sh', patterns: [/HY2_PORT/, /hysteria|hy2/i, /proxy_hy2|hy2=/i] },
       { file: 'features/proxy-vless-reality.sh', patterns: [/VLESS_PORT/, /REALITY_SERVER_NAME/, /REALITY_DEST_PORT/, /xray|VLESS/i] },
       { file: 'features/ssh-lockdown.sh', patterns: [/FINALIZE_SSH_LOCKDOWN/, /PermitRootLogin no/, /PasswordAuthentication no/, /service_restart/] },
@@ -359,6 +361,20 @@ describe('server-init-config skill', () => {
     }
   });
 
+  it('uses ufw as the only firewall hardening backend', () => {
+    const firewallReferenceText = fs.readFileSync(path.join(referencesDir, 'features', 'firewall.md'), 'utf8');
+    const firewallScriptText = fs.readFileSync(path.join(featureScriptsDir, 'firewall.sh'), 'utf8');
+
+    assert.match(firewallReferenceText, /Use `ufw`/);
+    assert.match(firewallReferenceText, /must be explicitly provided/);
+    assert.match(firewallScriptText, /error=missing_firewall_ssh_port/);
+    assert.doesNotMatch(firewallScriptText, /FIREWALL_SSH_PORT="\$\{FIREWALL_SSH_PORT:-22\}"/);
+    assert.match(firewallScriptText, /ufw default deny incoming/);
+    assert.match(firewallScriptText, /ufw default allow outgoing/);
+    assert.doesNotMatch(firewallReferenceText, /iptables|nftables/);
+    assert.doesNotMatch(firewallScriptText, /iptables|nft/);
+  });
+
   it('bounds proxy package installation and downloads', () => {
     for (const file of ['proxy-vless-reality.sh', 'proxy-hy2.sh']) {
       const scriptText = fs.readFileSync(path.join(featureScriptsDir, file), 'utf8');
@@ -436,8 +452,13 @@ describe('server-init-config skill', () => {
     assert.match(policyText, /Standard flow questions/);
     assert.match(policyText, /是否创建 `zheng` 用户/);
     assert.match(policyText, /是否启用备份/);
-    assert.match(policyText, /是否修改固定密码/);
-    assert.match(policyText, /是否启用 fail2ban/);
+    assert.match(policyText, /Only ask the fixed-password question after `login_mode: zheng_key_lockdown`/);
+    assert.doesNotMatch(policyText, /是否启用 fail2ban/);
+    assert.doesNotMatch(policyText, /是否启用防火墙加固/);
+    assert.doesNotMatch(policyText, /是否启用 BBR/);
+    assert.match(policyText, /fail2ban_enabled: true/);
+    assert.match(policyText, /firewall_enabled: true/);
+    assert.match(policyText, /bbr_enabled: true/);
 
     const lowMemorySection = policyText.slice(
       policyText.indexOf('## Low-memory Alpine questions'),
@@ -446,7 +467,52 @@ describe('server-init-config skill', () => {
     assert.doesNotMatch(lowMemorySection, /是否创建 `zheng` 用户/);
     assert.doesNotMatch(lowMemorySection, /是否启用备份/);
     assert.doesNotMatch(lowMemorySection, /是否修改固定密码/);
-    assert.doesNotMatch(lowMemorySection, /是否启用 fail2ban/);
+    assert.doesNotMatch(lowMemorySection, /是否启用 fail2ban|是否启用防火墙加固|是否启用 BBR/);
+
+    const initialStandardSection = policyText.slice(
+      policyText.indexOf('## Standard flow questions'),
+      policyText.indexOf('## zheng conditional question'),
+    );
+    assert.doesNotMatch(initialStandardSection, /是否修改固定密码/);
+    assert.match(policyText, /If `login_mode: root_password`, record `change_password: false` without asking/);
+  });
+
+  it('blocks standard flows until every required user answer and default policy value is recorded', () => {
+    const skillText = fs.readFileSync(skillPath, 'utf8');
+    const quickPathText = fs.readFileSync(path.join(referencesDir, 'quick-path.md'), 'utf8');
+    const policyText = fs.readFileSync(path.join(referencesDir, 'policy-questions.md'), 'utf8');
+    const taskText = fs.readFileSync(path.join(referencesDir, 'task-tracking.md'), 'utf8');
+
+    assert.match(skillText, /policy_decision_record/);
+    assert.match(skillText, /POLICY_INCOMPLETE_STOP/);
+    assert.match(skillText, /login_mode/);
+    assert.match(skillText, /proxy_choice/);
+    assert.match(skillText, /backup_enabled/);
+    assert.match(skillText, /change_password/);
+    assert.match(skillText, /fail2ban_enabled=true/);
+    assert.match(skillText, /firewall_enabled=true/);
+    assert.match(skillText, /bbr_enabled=true/);
+
+    assertLineMarkersInOrder(
+      quickPathText,
+      [
+        'Ask branch-specific policy questions',
+        'policy_decision_record',
+        'POLICY_INCOMPLETE_STOP',
+        'Add only the selected login policy and feature scripts',
+      ],
+      'quick-path.md',
+    );
+
+    assert.match(policyText, /Missing any user-answer field means BLOCKED/);
+    assert.match(policyText, /Do not infer defaults from partial user instructions/);
+    assert.match(policyText, /If the user says only "no backup" and "VLESS", this is incomplete/);
+    assert.match(policyText, /Do not ask the user whether to enable fail2ban, firewall hardening, or BBRv3/);
+
+    assert.match(taskText, /policy_decision_record/);
+    assert.match(taskText, /POLICY_INCOMPLETE_STOP/);
+    assert.match(taskText, /firewall_enabled/);
+    assert.match(taskText, /bbr_enabled/);
   });
 
   it('requires system update and required tools before any optional mutation', () => {
@@ -510,16 +576,20 @@ describe('server-init-config skill', () => {
     assert.match(lockdownScriptText, /PasswordAuthentication|PermitRootLogin|sshd_config/);
   });
 
-  it('handles root password changes without reconnecting with stale MCP credentials', () => {
+  it('keeps fixed password changes scoped to zheng mode', () => {
     const skillText = fs.readFileSync(skillPath, 'utf8');
     const rootFlowText = fs.readFileSync(path.join(referencesDir, 'flows', 'root-password.md'), 'utf8');
+    const zhengFlowText = fs.readFileSync(path.join(referencesDir, 'flows', 'zheng-key-lockdown.md'), 'utf8');
     const handoffText = fs.readFileSync(path.join(referencesDir, 'mcp-handoff.md'), 'utf8');
 
-    assert.match(rootFlowText, /CHANGE_PASSWORD=1/);
-    assert.match(rootFlowText, /root password/i);
+    assert.match(rootFlowText, /change_password: false/);
+    assert.match(rootFlowText, /Do not reset root password/);
+    assert.doesNotMatch(rootFlowText, /CHANGE_PASSWORD=1/);
     assert.match(rootFlowText, /212243/);
-    assert.match(skillText, /If root password changes in root mode, update the MCP config before reconnecting/);
-    assert.match(handoffText, /update the MCP config before reconnecting/);
+    assert.match(zhengFlowText, /CHANGE_PASSWORD=1/);
+    assert.match(zhengFlowText, /zheng sudo password/i);
+    assert.doesNotMatch(skillText, /If root password changes in root mode, update the MCP config before reconnecting/);
+    assert.match(handoffText, /Do not change root password in root mode/);
   });
 
   it('is granular enough for weak agents to create and follow task tracking', () => {

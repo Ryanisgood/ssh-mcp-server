@@ -9,7 +9,7 @@ Create task tracking before remote changes. Keep exactly one task `in_progress`.
 | pending | Verify bootstrap MCP entry | `list-servers` shows the named entry | MCP needs restart or config malformed | `list-servers` entry |
 | pending | Probe OS and effective memory | OS ID/family and `effective_memory_mb` known | Probe cannot run | `os_id`, `os_family`, package manager, service manager, `effective_memory_mb`, memory source |
 | pending | Select flow | Exactly one flow selected | OS unsupported | Chosen flow reference and script |
-| pending | Ask Chinese policy questions | Human decisions recorded | Answers conflict with safety rules | Login mode, proxy choice, backup, password, fail2ban |
+| pending | Ask Chinese policy questions | `policy_decision_record` has `login_mode`, `proxy_choice`, `backup_enabled`, conditional `change_password`, `fail2ban_enabled=true`, `firewall_enabled=true`, and `bbr_enabled=true` | Any required standard-flow user-answer field missing: stop with `POLICY_INCOMPLETE_STOP` | Full `policy_decision_record` |
 | pending | Resolve selected features | Feature script list is explicit | Feature choice incomplete | Exact feature scripts and env vars |
 | pending | Upload required scripts only | Remote files exist | Upload fails | Remote deployment path |
 | pending | Execute selected flow | Flow exits 0 | Timeout or package failure | Flow output summary |

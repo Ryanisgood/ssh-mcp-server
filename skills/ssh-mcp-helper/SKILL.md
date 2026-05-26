@@ -1,13 +1,13 @@
 ---
 name: ssh-mcp-helper
-description: Use when 用户希望安装、配置或新增 ssh-mcp-server 的 MCP 连接（如「帮我装一下 ssh-mcp-server」「给 Cursor/Claude Code 配置 SSH MCP」「在已有 MCP 里加一台远程主机」「ssh-mcp-server 的 mcp.json 怎么写」）。技能通过逐步问答收集主机、认证、传输模式、命令限制等参数，并把生成的 mcpServers JSON 片段写入对应客户端的配置文件。
+description: Use when 用户希望安装、配置、热更新或新增 ssh-mcp-server 的 MCP 连接（如「帮我装一下 ssh-mcp-server」「给 Cursor/Claude Code 配置 SSH MCP」「在已有 MCP 里加一台远程主机」「ssh-mcp-server 的 mcp.json 怎么写」）。
 ---
 
 # ssh-mcp-helper
 
 ## 概述
 
-帮助用户通过交互式问答完成 `@fangjunjie/ssh-mcp-server` 的安装预检与 MCP 客户端配置。技能本身**不代替用户输入凭据**，而是逐项确认认证方式、连接参数与安全策略，最终产出可直接写入 MCP 客户端配置文件的 `mcpServers` JSON 片段。
+帮助用户完成 `ssh-mcp-server` 的安装预检、MCP 客户端配置和运行时连接管理。优先使用 `--config-file`，这样后续可以通过 `upsert-server`、`remove-server`、`reload-config` 热更新连接，不需要每新增一台 VPS 就重启 MCP。
 
 **核心准则：** 所有可枚举的选项（MCP 客户端类型、认证方式、传输模式、是/否开关）必须使用 AskUserQuestion 让用户选择；只有不可枚举的输入（host、用户名、私钥路径、密码、自定义白名单正则等）才允许自由文本提问。
 
@@ -16,6 +16,7 @@ description: Use when 用户希望安装、配置或新增 ssh-mcp-server 的 MC
 - 用户明确要安装/配置/新增 ssh-mcp-server
 - 用户提到为 Cursor / Claude Code / Cline / Continue 等客户端添加 SSH MCP
 - 用户希望在已有 `mcpServers` 中追加一台 SSH 主机
+- 用户希望在已运行的 ssh-mcp-server 中新增、删除或重载 VPS 连接
 - 用户问「ssh-mcp-server 的 mcp.json 怎么写」
 
 ## 何时不使用
@@ -34,9 +35,9 @@ digraph ssh_mcp_helper {
     "3. 选择认证方式" [shape=box];
     "4. 询问连接参数" [shape=box];
     "5. 询问高级选项" [shape=box];
-    "6. 生成 JSON 片段" [shape=box];
-    "7. 合并写入配置" [shape=box];
-    "8. 提示重启与验证" [shape=doublecircle];
+    "6. 优先生成 --config-file 配置" [shape=box];
+    "7. 合并写入配置或调用运行时工具" [shape=box];
+    "8. 验证 list-servers" [shape=doublecircle];
 
     "0. 前置环境检查" -> "1. 选择 MCP 客户端";
     "1. 选择 MCP 客户端" -> "2. 单台 vs 多台";
@@ -44,9 +45,9 @@ digraph ssh_mcp_helper {
     "2. 单台 vs 多台" -> "3. 选择认证方式" [label="多台 → 写 ssh-config.json"];
     "3. 选择认证方式" -> "4. 询问连接参数";
     "4. 询问连接参数" -> "5. 询问高级选项";
-    "5. 询问高级选项" -> "6. 生成 JSON 片段";
-    "6. 生成 JSON 片段" -> "7. 合并写入配置";
-    "7. 合并写入配置" -> "8. 提示重启与验证";
+    "5. 询问高级选项" -> "6. 优先生成 --config-file 配置";
+    "6. 优先生成 --config-file 配置" -> "7. 合并写入配置或调用运行时工具";
+    "7. 合并写入配置或调用运行时工具" -> "8. 验证 list-servers";
 }
 ```
 
@@ -64,8 +65,8 @@ digraph ssh_mcp_helper {
 | Cline / Continue / 其他 | 让用户提供具体路径 |
 
 ### Step 2：单台 vs 多台（AskUserQuestion 二选一）
-- **单台**：直接使用命令行参数（`--host` 等）
-- **多台**：生成 `ssh-config.json` 并使用 `--config-file`
+- **推荐**：生成或复用 `ssh-config.json`，客户端配置使用 `--config-file`
+- **兼容**：单台直连可以用 `--host` 等命令行参数，但不能使用运行时热更新工具
 
 ### Step 3：选择认证方式（AskUserQuestion 多选一）
 - `password` — 账号 + 密码
@@ -89,10 +90,37 @@ digraph ssh_mcp_helper {
 
 ### Step 6：生成 JSON 片段
 装配规则：
-- `command` 固定为 `"npx"`
-- `args` 第一项 `"-y"`，第二项 `"@fangjunjie/ssh-mcp-server"`
+- 优先使用本地已安装的 `ssh-mcp-server` build；没有本地 build 时才使用 `"npx"` + `"@fangjunjie/ssh-mcp-server"`
+- 推荐形态：`command` 指向本地 `build/index.js` 或 `npx`，`args` 使用 `--config-file <绝对路径>`
 - **每个命令行参数与值必须是 args 数组中独立的两个元素**，绝不能写成 `"--host 192.168.1.1"`
-- 多连接场景：把每个连接写入 `ssh-config.json`（数组或对象格式皆可），客户端配置里只放 `--config-file <绝对路径>`
+- 单台和多台都优先把连接写入 `ssh-config.json`（数组或对象格式皆可），客户端配置里只放 `--config-file <绝对路径>`
+
+### 运行时工具优先规则
+
+如果当前已运行的 MCP 暴露以下工具，必须优先使用工具，不要手工改 JSON 后要求用户重启：
+
+| 工具 | 用途 |
+|---|---|
+| `upsert-server` | 新增或更新一个连接，写入 `--config-file` 并刷新运行时连接表 |
+| `remove-server` | 删除一个连接，写入 `--config-file` 并刷新运行时连接表 |
+| `reload-config` | 重新读取 `--config-file`，刷新运行时连接表 |
+
+新增 VPS 时，直接调用：
+
+```json
+{
+  "tool": "upsert-server",
+  "params": {
+    "name": "连接名称",
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "root",
+    "password": "用户提供的密码"
+  }
+}
+```
+
+如果工具返回 `CONFIG_FILE_REQUIRED`，说明当前 MCP 不是用 `--config-file` 启动。此时必须先把 MCP 客户端配置迁移到 `--config-file`，然后提示用户重启一次；之后新增、删除、重载连接都用运行时工具完成。
 
 ### Step 7：合并写入配置
 - 先用 Read 读取目标 JSON 配置文件
@@ -101,7 +129,8 @@ digraph ssh_mcp_helper {
 - 写入后输出该配置文件的绝对路径
 
 ### Step 8：收尾
-- 提示用户重启对应 MCP 客户端使配置生效
+- 首次安装或从 `npx`/直连参数迁移到本地 build/`--config-file` 时，提示用户重启对应 MCP 客户端使配置生效
+- 已经使用 `--config-file` 且运行时工具可用时，不要要求重启；调用 `upsert-server` / `remove-server` / `reload-config` 后直接验证
 - 给出验证方式：调用 `list-servers`，或对该连接执行 `execute-command "whoami"`
 
 ## 速查表
@@ -114,6 +143,9 @@ digraph ssh_mcp_helper {
 | SOCKS 代理 | `--socksProxy socks://user:pwd@host:port` |
 | 堡垒机 / 跳板机 | `--transport-mode shell --shell-ready-timeout 15000` |
 | 多连接 | `--config-file /abs/path/ssh-config.json` |
+| 运行时新增/更新 | `upsert-server` |
+| 运行时删除 | `remove-server` |
+| 运行时重载 | `reload-config` |
 | 2FA / MFA | `--try-keyboard`（搭配密码 + 私钥） |
 | 命令白名单 | `--whitelist "^ls( .*)?,^cat .*"` |
 | 命令黑名单 | `--blacklist "^rm .*,^shutdown.*"` |
@@ -126,6 +158,8 @@ digraph ssh_mcp_helper {
 - ❌ 密码含 `{ } = ,` 等字符却用旧式 `--ssh "name=...,password=..."` → ✅ 改用 `--config-file` 或 JSON 形式 `--ssh`
 - ❌ `shell` 模式下还想用 `upload`/`download` → 该模式禁用 SFTP，需切回 `exec`
 - ❌ 直接覆盖用户既有 `mcpServers` 中的同名 key → 必须先读后合并，覆盖前显式确认
+- ❌ 已有 `upsert-server` 还让用户手工编辑 JSON 或重启 → ✅ 直接调用运行时工具并 `list-servers` 验证
+- ❌ 用直连 `--host` 配置管理多台 VPS → ✅ 迁移到 `--config-file`，让运行时工具可用
 - ❌ 直连生产环境却未配置 `--whitelist` / `--blacklist` → 必须主动提醒安全风险
 - ❌ 把私钥内容粘进配置 → 配置里应填**私钥文件路径**，凭据留在本地
 

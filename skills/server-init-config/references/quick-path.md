@@ -12,8 +12,10 @@ Use this sequence for every VPS initialization.
    - Alpine and `effective_memory_mb >= 256`: standard Alpine flow.
    - Debian or Ubuntu: standard Debian flow.
 7. Ask branch-specific policy questions in Chinese from `references/policy-questions.md`.
-8. Add only the selected login policy and feature scripts.
-9. Run with timeouts and stop on the first failed safety check.
-10. Verify through MCP before MCP config migration, SSH lockdown, or cleanup.
+8. For standard Alpine, Debian, and Ubuntu, write `policy_decision_record` with all required fields: `login_mode`, `proxy_choice`, `backup_enabled`, `change_password`, `fail2ban_enabled=true`, `firewall_enabled=true`, `bbr_enabled=true`.
+9. If any standard-flow user-answer field is missing or ambiguous, stop with `POLICY_INCOMPLETE_STOP`; ask the missing question in Chinese before continuing.
+10. Add only the selected login policy and feature scripts.
+11. Run with timeouts and stop on the first failed safety check.
+12. Verify through MCP before MCP config migration, SSH lockdown, or cleanup.
 
 Never classify low-memory NAT or container VPS hosts from `/proc/meminfo` alone. Always use `effective_memory_mb`.

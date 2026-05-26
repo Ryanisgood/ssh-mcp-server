@@ -23,6 +23,6 @@ Required proof commands:
 
 For root mode:
 
-Keep the root MCP entry. If root password was changed to `212243`, update the MCP config before reconnecting so stale credentials are not reused.
+Keep the root MCP entry. Do not change root password in root mode.
 
 Final verification rule: prove the intended MCP entry can connect after every SSH-affecting change and before cleanup.

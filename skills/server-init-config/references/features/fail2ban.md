@@ -1,6 +1,8 @@
 # Fail2ban
 
-Run `scripts/features/fail2ban.sh` only when enabled and not in low-memory Alpine default flow.
+Standard flows default to fail2ban enabled. Do not ask the user whether to enable fail2ban.
+
+Run `scripts/features/fail2ban.sh` in standard flows and not in low-memory Alpine default flow.
 
 Ordering rule: run fail2ban after required tools and any backup, but before final SSH lockdown.
 

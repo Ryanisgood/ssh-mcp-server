@@ -14,8 +14,9 @@ Normal Alpine ordering:
 4. optional SSH prepare.
 5. optional fail2ban after support checks.
 6. optional BBR after support checks.
-7. selected proxy.
-8. verify, MCP handoff, optional SSH lockdown, cleanup.
+7. optional firewall after current SSH, final SSH, and selected proxy ports are known.
+8. selected proxy.
+9. verify, MCP handoff, optional SSH lockdown, cleanup.
 
 Fail2ban support checks:
 
@@ -35,3 +36,4 @@ BBR support checks:
 7. If the result is not `bbr`, report kernel/provider unsupported and continue without blocking proxy unless the user explicitly required BBR.
 
 Do not use apt, ufw assumptions, or systemd-only service commands in this flow.
+Firewall hardening must allow required ports before enabling deny rules and must tolerate Alpine hosts without persistent firewall tooling.
