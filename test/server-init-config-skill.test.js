@@ -471,6 +471,21 @@ describe('server-init-config skill', () => {
     assert.doesNotMatch(prepareText, /printf '%s\\n' "\$SSH_PUBLIC_KEY" > "\$ssh_dir\/authorized_keys"/);
   });
 
+  it('uses provided private key material for zheng handoff instead of fixed local defaults', () => {
+    const skillText = fs.readFileSync(skillPath, 'utf8');
+    const policyText = fs.readFileSync(path.join(referencesDir, 'policy-questions.md'), 'utf8');
+    const handoffText = fs.readFileSync(path.join(referencesDir, 'mcp-handoff.md'), 'utf8');
+    const zhengFlowText = fs.readFileSync(path.join(referencesDir, 'flows', 'zheng-key-lockdown.md'), 'utf8');
+    const combinedText = [skillText, policyText, handoffText, zhengFlowText].join('\n');
+
+    assert.doesNotMatch(combinedText, /\/Users\/zheng\/\.ssh\/id_ed25519/);
+    assert.doesNotMatch(combinedText, /~\/\.ssh\/id_ed25519\.pub/);
+    assert.match(combinedText, /provided `privateKey`/);
+    assert.match(policyText, /`SSH_PUBLIC_KEY` with `ssh-keygen -y -f "\$privateKey"`/);
+    assert.match(handoffText, /same provided `privateKey`/);
+    assert.match(zhengFlowText, /Do not create or generate SSH keys/);
+  });
+
   it('detects effective memory from cgroup and OpenVZ limits', () => {
     const referenceText = fs.readFileSync(path.join(referencesDir, 'memory-detection.md'), 'utf8');
     const scriptText = fs.readFileSync(path.join(commonScriptsDir, 'memory.sh'), 'utf8');

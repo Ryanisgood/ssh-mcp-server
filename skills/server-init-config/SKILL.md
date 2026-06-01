@@ -41,6 +41,7 @@ This skill is for an AI agent operating through `ssh-mcp-server`. It is not a hu
 - 标准 Alpine、Debian、Ubuntu 流程默认启用 fail2ban、ufw 防火墙加固、BBRv3；不要询问这三项，必须在 `policy_decision_record` 中写入 `fail2ban_enabled=true`, `firewall_enabled=true`, `bbr_enabled=true`。
 - 标准 Alpine、Debian、Ubuntu 流程在执行任何登录策略或功能脚本前，必须写出 `policy_decision_record`，字段必须包括 `login_mode`, `proxy_choice`, `backup_enabled`, `change_password`, `fail2ban_enabled`, `firewall_enabled`, `bbr_enabled`。缺少任意用户回答字段必须停止并标记 `POLICY_INCOMPLETE_STOP`。
 - 不要从用户的部分指令推断用户回答字段。比如用户只说“不备份，装 VLESS”时，仍缺少登录模式；如果登录模式是 `zheng_key_lockdown`，还缺少是否修改固定密码，必须继续用中文询问。
+- `zheng_key_lockdown` 必须使用当前目标 MCP 配置或用户明确提供的 `privateKey`。不要生成新的 SSH keypair，不要默认使用本机固定路径；运行 `ssh-prepare.sh` 前用 `ssh-keygen -y -f "$privateKey"` 从该私钥派生 `SSH_PUBLIC_KEY`，临时和最终 `zheng` MCP entry 也必须使用同一个 `privateKey`。
 - Every remote command must use the MCP/tool timeout. Also wrap remote shell commands with `timeout` when the remote host has it. If remote `timeout` is missing on minimal systems, keep the MCP/tool timeout active and install required tools before long-running commands.
 - If any referenced `references/...` or `scripts/...` file is missing, stop and report that the `server-init-config` skill installation is incomplete; do not improvise missing guidance or scripts.
 - Actual memory means `effective_memory_mb` from `scripts/common/probe.sh` or `scripts/common/memory.sh`; do not classify NAT or container hosts from `/proc/meminfo` alone.

@@ -48,12 +48,13 @@ Missing any user-answer field means BLOCKED. Stop with `POLICY_INCOMPLETE_STOP` 
 
 Do not infer defaults from partial user instructions. If the user says only "no backup" and "VLESS", this is incomplete: `login_mode` is still missing. If the selected login mode is `zheng_key_lockdown`, `change_password` is also missing until the conditional fixed-password question is answered.
 
-Do not ask for SSH port, default password, or public key path unless the user overrides them. Defaults are fixed:
+Do not ask for SSH port or default password unless the user overrides them. Defaults are fixed:
 
 - user: `zheng`
 - SSH port: `17223`
 - password: `212243`
-- public key source: local `~/.ssh/id_ed25519.pub`
+
+Do not create or generate SSH keys during initialization. In `zheng_key_lockdown`, use the current target MCP config's provided `privateKey`, or a user-provided `privateKey` if the bootstrap entry used password-only authentication. Then derive `SSH_PUBLIC_KEY` with `ssh-keygen -y -f "$privateKey"` immediately before running `ssh-prepare.sh`; do not use a fixed local public-key path.
 
 Proxy choices map to environment:
 
